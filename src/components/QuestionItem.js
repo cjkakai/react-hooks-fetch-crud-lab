@@ -1,7 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 function QuestionItem({ question, onDeleteQuestion, onUpdateQuestion }) {
-  const { id, prompt, answers, correctIndex } = question;
+  const { id, prompt, answers } = question;
+  const [correctIndex, setCorrectIndex] = useState(question.correctIndex);
+
+  useEffect(() => {
+    setCorrectIndex(question.correctIndex); // Sync with updated prop
+  }, [question.correctIndex]);
 
   const options = answers.map((answer, index) => (
     <option key={index} value={index}>
@@ -19,6 +24,7 @@ function QuestionItem({ question, onDeleteQuestion, onUpdateQuestion }) {
 
   function handleCorrectAnswerChange(e) {
     const newCorrectIndex = parseInt(e.target.value);
+    setCorrectIndex(newCorrectIndex); // Update immediately for UI
 
     fetch(`http://localhost:4000/questions/${id}`, {
       method: "PATCH",
@@ -37,7 +43,11 @@ function QuestionItem({ question, onDeleteQuestion, onUpdateQuestion }) {
       <h5>Prompt: {prompt}</h5>
       <label>
         Correct Answer:
-        <select value={correctIndex} onChange={handleCorrectAnswerChange}>
+        <select
+          value={correctIndex}
+          onChange={handleCorrectAnswerChange}
+          aria-label="Correct Answer"
+        >
           {options}
         </select>
       </label>

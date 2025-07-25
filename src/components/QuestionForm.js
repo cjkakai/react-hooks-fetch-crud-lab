@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 function QuestionForm({ onAddQuestion }) {
   const [formData, setFormData] = useState({
@@ -10,12 +10,21 @@ function QuestionForm({ onAddQuestion }) {
     correctIndex: 0,
   });
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   function handleChange(event) {
     const { name, value } = event.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "correctIndex" ? parseInt(value) : value,
+    }));
   }
 
   function handleSubmit(event) {
@@ -29,8 +38,10 @@ function QuestionForm({ onAddQuestion }) {
         formData.answer3,
         formData.answer4,
       ],
-      correctIndex: parseInt(formData.correctIndex),
+      correctIndex: formData.correctIndex,
     };
+
+    const controller = new AbortController();
 
     fetch("http://localhost:4000/questions", {
       method: "POST",
@@ -38,23 +49,31 @@ function QuestionForm({ onAddQuestion }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(newQuestion),
+      signal: controller.signal,
     })
       .then((r) => r.json())
       .then((newQuestionFromServer) => {
-        if (onAddQuestion) {
+        if (isMounted.current && onAddQuestion) {
           onAddQuestion(newQuestionFromServer);
-        }
 
-        // Reset form
-        setFormData({
-          prompt: "",
-          answer1: "",
-          answer2: "",
-          answer3: "",
-          answer4: "",
-          correctIndex: 0,
-        });
+          // Reset form safely
+          setFormData({
+            prompt: "",
+            answer1: "",
+            answer2: "",
+            answer3: "",
+            answer4: "",
+            correctIndex: 0,
+          });
+        }
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          console.error("Failed to submit question:", error);
+        }
       });
+
+    return () => controller.abort();
   }
 
   return (
